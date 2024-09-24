@@ -1,4 +1,4 @@
-package go_labs
+package main
 
 import (
 	"fmt"
