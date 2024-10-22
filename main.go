@@ -7,11 +7,12 @@ import (
 )
 
 func main() {
-	// Ініціалізація сховища
-	if err := InitializeStorage(); err != nil {
-		log.Fatalf("Помилка ініціалізації сховища: %v", err)
+	if err := InitializeDatabase(); err != nil {
+		log.Fatalf("Помилка ініціалізації бази даних: %v", err)
 	}
+	defer CloseDatabase()
 
+	//middleware для логування та авторизації
 	http.Handle("/", withAuthorization(withLogging(http.HandlerFunc(router))))
 
 	log.Println("Сервер запущений на http://localhost:8080")

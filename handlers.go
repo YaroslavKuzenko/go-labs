@@ -2,115 +2,119 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
 )
 
-// GetParcelsHandler обробляє запити на отримання всіх посилок з можливістю фільтрації
 func GetParcelsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Метод не дозволений", http.StatusMethodNotAllowed)
 		return
 	}
+
 	parcels, err := LoadParcels()
 	if err != nil {
 		http.Error(w, "Помилка при завантаженні посилок", http.StatusInternalServerError)
 		return
 	}
 
-	// Фільтрація за query parameters
 	query := r.URL.Query()
-	nameFilter := query.Get("sender")
+	senderFilter := query.Get("sender")
 	weightFilter := query.Get("weight")
 
-	filteredParcels := filterParcels(parcels, nameFilter, weightFilter)
+	filteredParcels := filterParcels(parcels, senderFilter, weightFilter)
 
-	// Повертаємо відфільтровані посилки
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(filteredParcels)
 }
 
-// створення нової посилки
 func CreateParcelHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Метод не дозволений", http.StatusMethodNotAllowed)
 		return
 	}
+
 	var parcel Parcel
 	if err := json.NewDecoder(r.Body).Decode(&parcel); err != nil {
 		http.Error(w, "Невірні дані", http.StatusBadRequest)
 		return
 	}
-	parcels, err := LoadParcels()
-	if err != nil {
-		http.Error(w, "Помилка при завантаженні посилок", http.StatusInternalServerError)
+
+	if err := SaveParcel(parcel); err != nil {
+		http.Error(w, "Помилка при збереженні посилки", http.StatusInternalServerError)
 		return
 	}
-	parcel.ID = fmt.Sprintf("%d", len(parcels)+1)
-	parcels = append(parcels, parcel)
-	if err := SaveParcels(parcels); err != nil {
-		http.Error(w, "Помилка при збереженні посилок", http.StatusInternalServerError)
-		return
-	}
+
 	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(parcel)
 }
 
-// оновлення або видалення посилки за ID
 func ParcelByIDHandler(w http.ResponseWriter, r *http.Request) {
-	id := strings.TrimPrefix(r.URL.Path, "/parcel/")
-	parcels, err := LoadParcels()
+	idStr := strings.TrimPrefix(r.URL.Path, "/parcel/")
+	id, err := strconv.Atoi(idStr)
 	if err != nil {
-		http.Error(w, "Помилка при завантаженні посилок", http.StatusInternalServerError)
-		return
-	}
-
-	var parcel *Parcel
-	for i := range parcels {
-		if parcels[i].ID == id {
-			parcel = &parcels[i]
-			break
-		}
-	}
-	if parcel == nil {
-		http.Error(w, "Посилка не знайдена", http.StatusNotFound)
+		http.Error(w, "Невірний ID", http.StatusBadRequest)
 		return
 	}
 
 	switch r.Method {
 	case http.MethodGet:
-		json.NewEncoder(w).Encode(parcel)
-	case http.MethodPut:
-		if err := json.NewDecoder(r.Body).Decode(parcel); err != nil {
-			http.Error(w, "Невірні дані", http.StatusBadRequest)
+		parcels, err := LoadParcels()
+		if err != nil {
+			http.Error(w, "Помилка при завантаженні посилок", http.StatusInternalServerError)
 			return
 		}
-		if err := SaveParcels(parcels); err != nil {
-			http.Error(w, "Помилка при збереженні посилок", http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(parcel)
-	case http.MethodDelete:
-		for i := range parcels {
-			if parcels[i].ID == id {
-				parcels = append(parcels[:i], parcels[i+1:]...)
+
+		var foundParcel *Parcel
+		for _, p := range parcels {
+			if p.ID == id {
+				foundParcel = &p
 				break
 			}
 		}
-		if err := SaveParcels(parcels); err != nil {
-			http.Error(w, "Помилка при збереженні посилок", http.StatusInternalServerError)
+
+		if foundParcel == nil {
+			http.Error(w, "Посилка не знайдена", http.StatusNotFound)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(foundParcel)
+
+	case http.MethodPut:
+		var parcel Parcel
+		if err := json.NewDecoder(r.Body).Decode(&parcel); err != nil {
+			http.Error(w, "Невірні дані", http.StatusBadRequest)
+			return
+		}
+		parcel.ID = id
+
+		if err := UpdateParcel(parcel); err != nil {
+			http.Error(w, "Помилка при оновленні посилки", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(parcel)
+
+	case http.MethodDelete:
+		if err := DeleteParcel(id); err != nil {
+			http.Error(w, "Помилка при видаленні посилки", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)
+
 	default:
 		http.Error(w, "Метод не дозволений", http.StatusMethodNotAllowed)
 	}
 }
 
-func filterParcels(parcels []Parcel, nameFilter, weightFilter string) []Parcel {
+func filterParcels(parcels []Parcel, senderFilter, weightFilter string) []Parcel {
 	var filtered []Parcel
 	for _, parcel := range parcels {
-		if nameFilter != "" && !strings.Contains(parcel.Sender, nameFilter) {
+		if senderFilter != "" && !strings.Contains(parcel.Sender, senderFilter) {
 			continue
 		}
 		if weightFilter != "" {

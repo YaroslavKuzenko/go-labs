@@ -1,50 +1,72 @@
 package main
 
 import (
-	"encoding/json"
-	"io/ioutil"
-	"os"
+	"context"
+	"fmt"
+	"github.com/jackc/pgx/v5"
+	"log"
 )
 
-const fileName = "parcels.json"
+var db *pgx.Conn
 
-// зчитуємо посилки з файлу
-func LoadParcels() ([]Parcel, error) {
-	file, err := os.Open(fileName)
+func InitializeDatabase() error {
+	var err error
+	dsn := "postgres://postgres:postgres@localhost:5432/parcel_db" // Замініть username і password на свої
+	db, err = pgx.Connect(context.Background(), dsn)
 	if err != nil {
-		if os.IsNotExist(err) {
-			return []Parcel{}, nil
-		}
-		return nil, err
+		return fmt.Errorf("не вдалося підключитися до бази даних: %w", err)
 	}
-	defer file.Close()
+	log.Println("Підключення до бази даних успішне")
+	return nil
+}
+
+func CloseDatabase() {
+	if db != nil {
+		db.Close(context.Background())
+		log.Println("Підключення до бази даних закрите")
+	}
+}
+
+func LoadParcels() ([]Parcel, error) {
+	rows, err := db.Query(context.Background(), "SELECT id, description, weight, sender, receiver FROM parcels")
+	if err != nil {
+		return nil, fmt.Errorf("помилка при завантаженні посилок: %w", err)
+	}
+	defer rows.Close()
 
 	var parcels []Parcel
-	if err := json.NewDecoder(file).Decode(&parcels); err != nil {
-		return nil, err
+	for rows.Next() {
+		var parcel Parcel
+		if err := rows.Scan(&parcel.ID, &parcel.Description, &parcel.Weight, &parcel.Sender, &parcel.Receiver); err != nil {
+			return nil, fmt.Errorf("помилка при читанні рядка: %w", err)
+		}
+		parcels = append(parcels, parcel)
 	}
 	return parcels, nil
 }
 
-// зберігаємо посилки у файл
-func SaveParcels(parcels []Parcel) error {
-	data, err := json.MarshalIndent(parcels, "", "  ")
+func SaveParcel(parcel Parcel) error {
+	_, err := db.Exec(context.Background(), "INSERT INTO parcels (description, weight, sender, receiver) VALUES ($1, $2, $3, $4)",
+		parcel.Description, parcel.Weight, parcel.Sender, parcel.Receiver)
 	if err != nil {
-		return err
+		return fmt.Errorf("помилка при збереженні посилки: %w", err)
 	}
-	return ioutil.WriteFile(fileName, data, 0644)
+	return nil
 }
 
-func InitializeStorage() error {
-	if _, err := os.Stat(fileName); os.IsNotExist(err) {
-		initialParcels := []Parcel{
-			{ID: "1", Description: "Books", Weight: 2.5, Sender: "Ivan", Receiver: "Pavlo"},
-			{ID: "2", Description: "Electronics", Weight: 1.2, Sender: "Maria", Receiver: "Olena"},
-			{ID: "3", Description: "Clothes", Weight: 3.0, Sender: "Oleg", Receiver: "Dmytro"},
-			{ID: "4", Description: "Toys", Weight: 0.8, Sender: "Anna", Receiver: "Maksym"},
-			{ID: "5", Description: "Documents", Weight: 0.5, Sender: "Nadia", Receiver: "Roman"},
-		}
-		return SaveParcels(initialParcels)
+func UpdateParcel(parcel Parcel) error {
+	_, err := db.Exec(context.Background(), "UPDATE parcels SET description=$1, weight=$2, sender=$3, receiver=$4 WHERE id=$5",
+		parcel.Description, parcel.Weight, parcel.Sender, parcel.Receiver, parcel.ID)
+	if err != nil {
+		return fmt.Errorf("помилка при оновленні посилки: %w", err)
+	}
+	return nil
+}
+
+func DeleteParcel(id int) error {
+	_, err := db.Exec(context.Background(), "DELETE FROM parcels WHERE id=$1", id)
+	if err != nil {
+		return fmt.Errorf("помилка при видаленні посилки: %w", err)
 	}
 	return nil
 }
