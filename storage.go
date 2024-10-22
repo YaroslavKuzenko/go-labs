@@ -13,7 +13,7 @@ func LoadParcels() ([]Parcel, error) {
 	file, err := os.Open(fileName)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return []Parcel{}, nil // Повертаємо порожній список, якщо файл не існує
+			return []Parcel{}, nil
 		}
 		return nil, err
 	}

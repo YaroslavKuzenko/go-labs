@@ -1,12 +1,5 @@
 [
   {
-    "id": "1",
-    "description": "Books",
-    "weight": 2.5,
-    "sender": "Ivan",
-    "receiver": "Pavlo"
-  },
-  {
     "id": "2",
     "description": "Electronics",
     "weight": 1.2,

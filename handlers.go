@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-// отримання всіх посилок
+// GetParcelsHandler обробляє запити на отримання всіх посилок з можливістю фільтрації
 func GetParcelsHandler(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Метод не дозволений", http.StatusMethodNotAllowed)
@@ -18,7 +18,16 @@ func GetParcelsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Помилка при завантаженні посилок", http.StatusInternalServerError)
 		return
 	}
-	json.NewEncoder(w).Encode(parcels)
+
+	// Фільтрація за query parameters
+	query := r.URL.Query()
+	nameFilter := query.Get("sender")
+	weightFilter := query.Get("weight")
+
+	filteredParcels := filterParcels(parcels, nameFilter, weightFilter)
+
+	// Повертаємо відфільтровані посилки
+	json.NewEncoder(w).Encode(filteredParcels)
 }
 
 // створення нової посилки
@@ -37,7 +46,7 @@ func CreateParcelHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Помилка при завантаженні посилок", http.StatusInternalServerError)
 		return
 	}
-	parcel.ID = fmt.Sprintf("%d", len(parcels)+1) // Генерація ID
+	parcel.ID = fmt.Sprintf("%d", len(parcels)+1)
 	parcels = append(parcels, parcel)
 	if err := SaveParcels(parcels); err != nil {
 		http.Error(w, "Помилка при збереженні посилок", http.StatusInternalServerError)
@@ -96,4 +105,22 @@ func ParcelByIDHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "Метод не дозволений", http.StatusMethodNotAllowed)
 	}
+}
+
+func filterParcels(parcels []Parcel, nameFilter, weightFilter string) []Parcel {
+	var filtered []Parcel
+	for _, parcel := range parcels {
+		if nameFilter != "" && !strings.Contains(parcel.Sender, nameFilter) {
+			continue
+		}
+		if weightFilter != "" {
+			weight := parcel.Weight
+			weightMatch := weightFilter == "light" && weight <= 1.0 || weightFilter == "heavy" && weight > 1.0
+			if !weightMatch {
+				continue
+			}
+		}
+		filtered = append(filtered, parcel)
+	}
+	return filtered
 }
