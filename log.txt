@@ -34,3 +34,4 @@
 2024/10/22 23:14:13 Method: GET, Path: /parcels, Time: 2024-10-22T23:14:13+03:00
 2024/10/22 23:17:56 Method: GET, Path: /parcels, Time: 2024-10-22T23:17:56+03:00
 2024/10/22 23:18:06 Method: DELETE, Path: /parcel/6, Time: 2024-10-22T23:18:06+03:00
+2024/10/22 23:18:13 Method: GET, Path: /parcels, Time: 2024-10-22T23:18:13+03:00

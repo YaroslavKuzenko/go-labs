@@ -11,7 +11,7 @@ var db *pgx.Conn
 
 func InitializeDatabase() error {
 	var err error
-	dsn := "postgres://postgres:postgres@localhost:5432/parcel_db" // Замініть username і password на свої
+	dsn := "postgres://postgres:postgres@localhost:5432/parcel_db"
 	db, err = pgx.Connect(context.Background(), dsn)
 	if err != nil {
 		return fmt.Errorf("не вдалося підключитися до бази даних: %w", err)
