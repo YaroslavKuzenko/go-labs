@@ -1,0 +1,37 @@
+[
+  {
+    "id": "1",
+    "description": "Books",
+    "weight": 2.5,
+    "sender": "Ivan",
+    "receiver": "Pavlo"
+  },
+  {
+    "id": "2",
+    "description": "Electronics",
+    "weight": 1.2,
+    "sender": "Maria",
+    "receiver": "Olena"
+  },
+  {
+    "id": "3",
+    "description": "Clothes",
+    "weight": 3,
+    "sender": "Oleg",
+    "receiver": "Dmytro"
+  },
+  {
+    "id": "4",
+    "description": "Toys",
+    "weight": 0.8,
+    "sender": "Anna",
+    "receiver": "Maksym"
+  },
+  {
+    "id": "5",
+    "description": "Documents",
+    "weight": 0.5,
+    "sender": "Nadia",
+    "receiver": "Roman"
+  }
+]
